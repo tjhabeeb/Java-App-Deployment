@@ -1,545 +1,162 @@
 # Java-App-Deployment
 
-This README mirrors the original project setup PDF **word-for-word**, with commands and instructions preserved.
+This repository contains the setup and deployment instructions for the **Java-App-Deployment** project.  
+It provisions a complete multi-VM application stack using **Vagrant + VirtualBox**, and deploys a Java web application with Tomcat, Nginx, RabbitMQ, Memcache, and MySQL.
 
 ---
 
-VPROFILEPROJECTSETUP
-Prerequisite
-1.
-Oracle
-VM
-Virtualbox
-2.
-Vagrant
-3.
-Vagrant
-plugins
-Execute
-below
-command
-in
-your
-computer
-to
-install
-hostmanager
-plugin
-$vagrantplugininstallvagrant-hostmanager
-4.
-Git
-bash
-or
-equivalent
-editor
-VMSETUP
-1.
-Clone
-source
-code.
-2.
-Cd
-into
-the
-repository.
-3.
-Switch
-to
-the
-local
-branch.
-4.
-cd
-into
-vagrant/
-Manual_provisioning
-Bring
-up
-vm’s
-$vagrantup
-NOTE
-:
-Bringing
-up
-all
-the
-vm’s
-may
-take
-a
-long
-time
-based
-on
-various
-factors.
-If
-vm
-setup
-stops
-in
-the
-middle
-run
-“vagrant
-up”
-command
-again.
-INFO
-:
-All
-the
-vm’s
-hostname
-and
-/etc/hosts
-file
-entries
-will
-be
-automatically
-updated.
+## 🚀 Project Architecture
 
-PROVISIONING
-Services
-1.Nginx=>WebService2.Tomcat=>ApplicationServer3.RabbitMQ=>Broker/QueuingAgent4.Memcache=>DBCaching5.ElasticSearch=>Indexing/Searchservice6.MySQL=>SQLDatabase
-Setup
-should
-be
-done
-in
-below
-mentioned
-order
-MySQL(DatabaseSVC)Memcache(DBCachingSVC)RabbitMQ(Broker/QueueSVC)Tomcat(ApplicationSVC)Nginx(WebSVC)
+The stack consists of five VMs:
 
+- **db01** → MySQL (Database)
+- **mc01** → Memcache (Caching)
+- **rmq01** → RabbitMQ (Message Broker)
+- **app01** → Tomcat (Application Server + Java App)
+- **web01** → Nginx (Web Server / Reverse Proxy)
 
-1.
-MYSQL
-Setup
-Login
-to
-the
-db
-vm
-$vagrantsshdb01
-Verify
-Hosts
-entry ,
-if
-entries
-missing
-update
-the
-it
-with
-IP
-and
-hostnames
-#cat/etc/hosts
-Update
-OS
-with
-latest
-patches
-#dnfupdate-y
-Set
-Repository
-#dnfinstallepel-release-y
-Install
-Maria
-DB
-Package
-#dnfinstallgitmariadb-server-y
-Starting
-&
-enabling
-mariadb-server
-#systemctlstartmariadb#systemctlenablemariadb
+---
 
-RUN
-mysql
-secure
-installation
-script.
-#mysql_secure_installation
-NOTE
-:
-Set
-db
-root
-password,
-I
-will
-be
-using
-admin123
-as
-password
-Setrootpassword?[Y/n]YNewpassword:Re-enternewpassword:Passwordupdatedsuccessfully!Reloadingprivilegetables.....Success!
-Bydefault,aMariaDBinstallationhasananonymoususer,allowinganyonetologintoMariaDBwithouthavingtohaveauseraccountcreatedforthem.Thisisintendedonlyfortesting,andtomaketheinstallationgoabitsmoother.Youshouldremovethembeforemovingintoaproductionenvironment.
-Removeanonymoususers?[Y/n]Y...Success!
-Normally,rootshouldonlybeallowedtoconnectfrom'localhost'.Thisensuresthatsomeonecannotguessattherootpasswordfromthenetwork.
-Disallowrootloginremotely?[Y/n]n...skipping.
-Bydefault,MariaDBcomeswithadatabasenamed'test'thatanyonecanaccess.Thisisalsointendedonlyfortesting,andshouldberemovedbeforemovingintoaproductionenvironment.
-Removetestdatabaseandaccesstoit?[Y/n]Y-Droppingtestdatabase......Success!-Removingprivilegesontestdatabase......Success!
-Reloadingtheprivilegetableswillensurethatallchangesmadesofarwilltakeeffectimmediately.
-Reloadprivilegetablesnow?[Y/n]Y...Success!
+## ⚙️ Prerequisites
 
-Set
-DB
-name
-and
-users.
-#mysql-uroot-padmin123
-mysql>createdatabaseaccounts;mysql>grantallprivilegesonaccounts.*TO'admin'@'localhost'identifiedby'admin123';mysql>grantallprivilegesonaccounts.*TO'admin'@'%'identifiedby'admin123';mysql>FLUSHPRIVILEGES;mysql>exit;
-Download
-Source
-code
-&
-Initialize
-Database.
-#cd/tmp/#gitclone-blocalhttps://github.com/hkhcoder/vprofile-project.git#cdvprofile-project#mysql-uroot-padmin123accounts<src/main/resources/db_backup.sql#mysql-uroot-padmin123accounts
-mysql>showtables;mysql>exit;
-Restart
-mariadb-server
-#systemctlrestartmariadb
-Starting
-the
-firewall
-and
-allowing
-the
-mariadb
-to
-access
-from
-port
-no.
-3306
-#systemctlstartfirewalld#systemctlenablefirewalld#firewall-cmd--get-active-zones#firewall-cmd--zone=public--add-port=3306/tcp--permanent#firewall-cmd--reload#systemctlrestartmariadb
+Install the following on your host machine:
 
-2.MEMCACHE
-SETUP
-Login
-to
-the
-Memcache
-vm
-$vagrantsshmc01
-Verify
-Hosts
-entry ,
-if
-entries
-missing
-update
-the
-it
-with
-IP
-and
-hostnames
-#cat/etc/hosts
-Update
-OS
-with
-latest
-patches
-#dnfupdate-y
-Install,
-start
-&
-enable
-memcache
-on
-port
-11211
-#sudodnfinstallepel-release-y#sudodnfinstallmemcached-y#sudosystemctlstartmemcached#sudosystemctlenablememcached#sudosystemctlstatusmemcached#sed-i's/127.0.0.1/0.0.0.0/g'/etc/sysconfig/memcached#sudosystemctlrestartmemcached
-Starting
-the
-firewall
-and
-allowing
-the
-port
-11211
-to
-access
-memcache
-#systemctlstartfirewalld#systemctlenablefirewalld#firewall-cmd--add-port=11211/tcp#firewall-cmd--runtime-to-permanent#firewall-cmd--add-port=11111/udp#firewall-cmd--runtime-to-permanent#sudomemcached-p11211-U11111-umemcached-d
+1. [Oracle VM VirtualBox](https://www.virtualbox.org/)
+2. [Vagrant](https://developer.hashicorp.com/vagrant/downloads)
+3. Vagrant plugins:
+   ```bash
+   vagrant plugin install vagrant-hostmanager
+   ```
+4. Git Bash (or any equivalent terminal)
 
-3.RABBITMQ
-SETUP
-Login
-to
-the
-RabbitMQ
-vm
-$vagrantsshrmq01
-Verify
-Hosts
-entry ,
-if
-entries
-missing
-update
-the
-it
-with
-IP
-and
-hostnames
-#cat/etc/hosts
-Update
-OS
-with
-latest
-patches
-#dnfupdate-y
-Set
-EPEL
-Repository
-#dnfinstallepel-release-y
-Install
-Dependencies
-#sudodnfinstallwget-y#dnf-yinstallcentos-release-rabbitmq-38#dnf--enablerepo=centos-rabbitmq-38-yinstallrabbitmq-server#systemctlenable--nowrabbitmq-server
-Setup
-access
-to
-user
-test
-and
-make
-it
-admin
-#sudosh-c'echo"[{rabbit,[{loopback_users,[]}]}].">/etc/rabbitmq/rabbitmq.config'#sudorabbitmqctladd_usertesttest#sudorabbitmqctlset_user_tagstestadministrator#rabbitmqctlset_permissions-p/test".*"".*"".*"#sudosystemctlrestartrabbitmq-server
-Starting
-the
-firewall
-and
-allowing
-the
-port
-5672
-to
-access
-rabbitmq
-#sudosystemctlstartfirewalld#sudosystemctlenablefirewalld#firewall-cmd--add-port=5672/tcp#firewall-cmd--runtime-to-permanent#sudosystemctlstartrabbitmq-server#sudosystemctlenablerabbitmq-server#sudosystemctlstatusrabbitmq-server
+---
 
-4.TOMCAT
-SETUP
-Login
-to
-the
-tomcat
-vm
-$vagrantsshapp01
-Verify
-Hosts
-entry ,
-if
-entries
-missing
-update
-the
-it
-with
-IP
-and
-hostnames
-#cat/etc/hosts
-Update
-OS
-with
-latest
-patches
-#dnfupdate-y
-Set
-Repository
-#dnfinstallepel-release-y
-Install
-Dependencies
-#dnf-yinstalljava-17-openjdkjava-17-openjdk-devel
-#dnfinstallgitwget-y
-Change
-dir
-to
-/tmp
-#cd/tmp/
-Download
-&
-Tomcat
-Package
-#wgethttps://archive.apache.org/dist/tomcat/tomcat-10/v10.1.26/bin/apache-tomcat-10.1.26.tar.gz
-#tarxzvfapache-tomcat-10.1.26.tar.gz
-Add
-tomcat
-user
-#useradd--home-dir/usr/local/tomcat--shell/sbin/nologintomcat
+## 📦 VM Setup
 
-Copy
-data
-to
-tomcat
-home
-dir
-#cp-r/tmp/apache-tomcat-10.1.26/*/usr/local/tomcat/
-Make
-tomcat
-user
-owner
-of
-tomcat
-home
-dir
-#chown-Rtomcat.tomcat/usr/local/tomcat
-Setup
-systemctl
-command
-for
-tomcat
-Create
-tomcat
-service
-file
-#vi/etc/systemd/system/tomcat.service
-Update
-the
-file
-with
-below
-content
-[Unit]
-Description=Tomcat
-After=network.target
-[Service]
-User=tomcat
-Group=tomcat
-WorkingDirectory=/usr/local/tomcat
-Environment=JAVA_HOME=/usr/lib/jvm/jre
-Environment=CATALINA_PID=/var/tomcat/%i/run/tomcat.pid
-Environment=CATALINA_HOME=/usr/local/tomcat
-Environment=CATALINE_BASE=/usr/local/tomcat
-ExecStart=/usr/local/tomcat/bin/catalina.shrun
-ExecStop=/usr/local/tomcat/bin/shutdown.sh
-RestartSec=10
-Restart=always
-[Install]
-WantedBy=multi-user.target
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/tjhabeeb/Java-App-Deployment.git
+   cd Java-App-Deployment/vagrant/Automated_provisioning_WinMacIntel
+   ```
 
-Reload
-systemd
-files
-#systemctldaemon-reload
-Start
-&
-Enable
-service
-#systemctlstarttomcat#systemctlenabletomcat
-Enabling
-the
-firewall
-and
-allowing
-port
-8080
-to
-access
-the
-tomcat
-#systemctlstartfirewalld#systemctlenablefirewalld#firewall-cmd--get-active-zones#firewall-cmd--zone=public--add-port=8080/tcp--permanent#firewall-cmd--reload
+2. Bring up the VMs:
+   ```bash
+   vagrant up
+   ```
 
-CODE
-BUILD
-&
-DEPLOY
-(app01)
-Maven
-Setup
-#cd/tmp/
-#wgethttps://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.zip
-#unzipapache-maven-3.9.9-bin.zip#cp-rapache-maven-3.9.9/usr/local/maven3.9#exportMAVEN_OPTS="-Xmx512m"
-Download
-Source
-code
-#gitclone-blocalhttps://github.com/hkhcoder/vprofile-project.git
-Update
-configuration
-#cdvprofile-project#vimsrc/main/resources/application.properties#Updatefilewithbackendserverdetails
-Build
-code
-Run
-below
-command
-inside
-the
-repository
-(vprofile-project)
-#/usr/local/maven3.9/bin/mvninstall
-Deploy
-artifact
-#systemctlstoptomcat
-#rm-rf/usr/local/tomcat/webapps/ROOT*#cptarget/vprofile-v2.war/usr/local/tomcat/webapps/ROOT.war#systemctlstarttomcat#chowntomcat.tomcat/usr/local/tomcat/webapps-R#systemctlrestarttomcat
+   > Note: Provisioning all VMs may take some time. If it stops midway, rerun `vagrant up`.
 
-5.NGINX
-SETUP
-Login
-to
-the
-Nginx
-vm
-$vagrantsshweb01$sudo-i
-Verify
-Hosts
-entry ,
-if
-entries
-missing
-update
-the
-it
-with
-IP
-and
-hostnames
-#cat/etc/hosts
-Update
-OS
-with
-latest
-patches
-#aptupdate#aptupgrade
-Install
-nginx
-#aptinstallnginx-y
-Create
-Nginx
-conf
-file
-#vi/etc/nginx/sites-available/vproapp
-Update
-with
-below
-content
-upstreamvproapp{serverapp01:8080;}server{listen80;location/{proxy_passhttp://vproapp;}}
-Remove
-default
-nginx
-conf
-#rm-rf/etc/nginx/sites-enabled/default
-Create
-link
-to
-activate
-website
-#ln-s/etc/nginx/sites-available/vproapp/etc/nginx/sites-enabled/vproapp
-Restart
-Nginx
-#
-systemctl
-restart
-nginx
+---
 
+## 🔧 Manual Provisioning (if needed)
 
+If you prefer manual setup, you can provision each service in this order:
 
+1. **MySQL (db01)**
+   ```bash
+   vagrant ssh db01
+   sudo dnf update -y
+   sudo dnf install epel-release git mariadb-server -y
+   sudo systemctl enable --now mariadb
+   mysql_secure_installation
+   # Set root password: admin123
+   mysql -u root -padmin123 -e "create database accounts;"
+   mysql -u root -padmin123 accounts < src/main/resources/db_backup.sql
+   ```
+
+2. **Memcache (mc01)**
+   ```bash
+   vagrant ssh mc01
+   sudo dnf install epel-release memcached -y
+   sudo systemctl enable --now memcached
+   ```
+
+3. **RabbitMQ (rmq01)**
+   ```bash
+   vagrant ssh rmq01
+   sudo dnf install epel-release wget -y
+   sudo dnf -y install centos-release-rabbitmq-38
+   sudo dnf --enablerepo=centos-rabbitmq-38 -y install rabbitmq-server
+   sudo systemctl enable --now rabbitmq-server
+   ```
+
+4. **Tomcat + Java (app01)**
+   ```bash
+   vagrant ssh app01
+   sudo dnf -y install java-17-openjdk java-17-openjdk-devel git wget
+   cd /tmp
+   wget https://archive.apache.org/dist/tomcat/tomcat-10/v10.1.26/bin/apache-tomcat-10.1.26.tar.gz
+   tar xzvf apache-tomcat-10.1.26.tar.gz
+   sudo cp -r apache-tomcat-10.1.26 /usr/local/tomcat
+   sudo useradd --home-dir /usr/local/tomcat --shell /sbin/nologin tomcat
+   sudo chown -R tomcat:tomcat /usr/local/tomcat
+   ```
+
+   ### Build & Deploy App
+   ```bash
+   cd /tmp
+   wget https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.zip
+   unzip apache-maven-3.9.9-bin.zip
+   sudo cp -r apache-maven-3.9.9 /usr/local/maven
+   export PATH=$PATH:/usr/local/maven/bin
+
+   git clone -b local https://github.com/tjhabeeb/Java-App-Deployment.git
+   cd Java-App-Deployment
+   mvn install
+   sudo systemctl stop tomcat
+   sudo rm -rf /usr/local/tomcat/webapps/ROOT*
+   sudo cp target/*.war /usr/local/tomcat/webapps/ROOT.war
+   sudo systemctl start tomcat
+   ```
+
+5. **Nginx (web01)**
+   ```bash
+   vagrant ssh web01
+   sudo apt update && sudo apt install nginx -y
+   sudo tee /etc/nginx/sites-available/vproapp <<EOF
+   upstream vproapp {
+       server app01:8080;
+   }
+   server {
+       listen 80;
+       location / {
+           proxy_pass http://vproapp;
+       }
+   }
+   EOF
+   sudo ln -s /etc/nginx/sites-available/vproapp /etc/nginx/sites-enabled/vproapp
+   sudo systemctl restart nginx
+   ```
+
+---
+
+## ✅ Accessing the App
+
+After setup, open your browser and navigate to:
+
+```
+http://web01
+```
+
+This should serve the Java web application through Nginx → Tomcat → MySQL/Memcache/RabbitMQ.
+
+---
+
+## 📝 Notes
+
+- If provisioning fails, you can reprovision a single VM:
+  ```bash
+  vagrant reload <vm-name> --provision
+  ```
+- If you want to destroy and rebuild:
+  ```bash
+  vagrant destroy -f
+  vagrant up
+  ```
+
+---
+
+## 📌 Project Name
+
+**Repository:** [Java-App-Deployment](https://github.com/tjhabeeb/Java-App-Deployment)  
+**Stack:** Java, Tomcat, Maven, MySQL, Memcache, RabbitMQ, Nginx  
